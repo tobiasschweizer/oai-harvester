@@ -142,7 +142,7 @@ do {
 		    if ($file->nodeType == 3) continue; // text node
 		    $img_id = $file->getAttribute('ID');
 
-		    $pos = mb_strrpos($img_id, '_', 0, 'UTF-8');
+		    $pos = strrpos($img_id, '_');
 
 		    $record_array[$id]['urls'][] = substr($file->getAttribute('ID'), ($pos+1));
 
