@@ -26,7 +26,8 @@ ini_set('display_errors', 1);
 $record_array = array();
 
 if ($argc < 2) {
-    echo 'Usage: get_records_with_urls.php e-rara|e-manuscripta' . PHP_EOL;
+    echo 'Usage: get_records_with_urls.php e-rara|e-manuscripta [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL;
+    echo 'Limit request by specifying a datestamp (records created modified >= specified datestamp)' . PHP_EOL;
     exit(0);
 }
 
@@ -35,11 +36,25 @@ if ($argv[1] == 'e-rara') {
 } elseif ($argv[1] == 'e-manuscripta') {
     $provider = 'e-manuscripta';
 } else {
-    echo 'Usage: get_records_with_urls.php e-rara|e-manuscripta' . PHP_EOL;
+    echo 'Usage: get_records_with_urls.php e-rara|e-manuscripta [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL;
+    echo 'Limit request by specifying a datestamp (records created modified >= specified datestamp)' . PHP_EOL;
     exit(1);
 }
 
-$conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=ListRecords&metadataPrefix=oai_dc');
+$datestr = '';
+if ($argc == 3) {
+    // limit request by datestamp
+    $datestamp = $argv[2];
+    
+    // check $datestamp 
+    if (preg_match('/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/', $datestamp) !== 1) {
+	echo 'Datestamp format is invalid' . PHP_EOL;
+	exit(1);
+    }
+    $datestr = '&from=' . $datestamp;
+}
+
+$conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=ListRecords&metadataPrefix=oai_dc' . $datestr);
 
 $xml = new DOMDocument();
 $xml->loadXML($conts);
@@ -180,5 +195,7 @@ do {
 
 fwrite($file_ptr, json_encode($record_array));
 fclose($file_ptr);
+
+exit(0);
 
 ?>
