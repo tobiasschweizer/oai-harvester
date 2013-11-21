@@ -1,9 +1,9 @@
 <?php
 /**
- * Author: Tobias Schweizer, Digital Humanities Lab, University of Basel, 
+ * Author: Tobias Schweizer, Digital Humanities Lab, University of Basel,
  * Contact: t.schweizer@unibas.ch
  *
- * Version: 0.9 
+ * Version: 0.9
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,11 +45,11 @@ $datestr = '';
 if ($argc == 3) {
     // limit request by datestamp
     $datestamp = $argv[2];
-    
-    // check $datestamp 
+
+    // check $datestamp
     if (preg_match('/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/', $datestamp) !== 1) {
-	echo 'Datestamp format is invalid' . PHP_EOL;
-	exit(1);
+        echo 'Datestamp format is invalid' . PHP_EOL;
+        exit(1);
     }
     $datestr = '&from=' . $datestamp;
 }
@@ -70,7 +70,7 @@ $file_ptr = fopen($provider . '_records.json', 'w');
 
 $counter = 1;
 do {
-    
+
 
     $rec_counter = 1;
 
@@ -88,18 +88,18 @@ do {
                 foreach ($rec_node->childNodes as $header_node) {
                     if ($header_node->nodeType == 3) continue; // text node
 
-		    if ($header_node->nodeName == 'identifier') {
-			$identifier = $header_node->nodeValue;
-		    }
+                    if ($header_node->nodeName == 'identifier') {
+                        $identifier = $header_node->nodeValue;
+                    }
 
                     if (!isset($id)) $id = $header_node->nodeValue;
 
-                    if (!array_key_exists($id, $record_array)) { 
-			$record_array[$id] =  array();
-			$record_array[$id]['header'] =  array();
-			$record_array[$id]['metadata'] =  array();
-		    }
-		    
+                    if (!array_key_exists($id, $record_array)) {
+                        $record_array[$id] =  array();
+                        $record_array[$id]['header'] =  array();
+                        $record_array[$id]['metadata'] =  array();
+                    }
+
                     if (array_key_exists($header_node->nodeName, $record_array[$id]['header'])) {
                         if (!is_array($record_array[$id]['header'][$header_node->nodeName])) {
                             $tmp = $record_array[$id]['header'][$header_node->nodeName];
@@ -133,42 +133,42 @@ do {
                 }
             }
 
-	    
+
         }
 
 
-	// get file ids by using the mets metadata prefix
-	$mets_conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=GetRecord&metadataPrefix=mets&identifier=' . $identifier);
-	$mets_xml = new DOMDocument();
-	$mets_xml->loadXML($mets_conts);
+        // get file ids by using the mets metadata prefix
+        $mets_conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=GetRecord&metadataPrefix=mets&identifier=' . $identifier);
+        $mets_xml = new DOMDocument();
+        $mets_xml->loadXML($mets_conts);
 
-	$ns = $mets_xml->lookupNamespaceURI('mets');
-	$fileSec = $mets_xml->getElementsByTagNameNS($ns, 'fileSec');
-	
-	
-	foreach ($fileSec->item(0)->childNodes as $fileGrp) {
-	    if ($fileGrp->nodeType == 3) continue; // text node
-	    
-	    if ($fileGrp->getAttribute('USE') == 'DEFAULT') {
-		
-		$record_array[$id]['urls'] = array();
+        $ns = $mets_xml->lookupNamespaceURI('mets');
+        $fileSec = $mets_xml->getElementsByTagNameNS($ns, 'fileSec');
 
-		foreach($fileGrp->childNodes as $file) {
-		    if ($file->nodeType == 3) continue; // text node
-		    $img_id = $file->getAttribute('ID');
 
-		    $pos = strrpos($img_id, '_');
+        foreach ($fileSec->item(0)->childNodes as $fileGrp) {
+            if ($fileGrp->nodeType == 3) continue; // text node
 
-		    $record_array[$id]['urls'][] = substr($file->getAttribute('ID'), ($pos+1));
+            if ($fileGrp->getAttribute('USE') == 'DEFAULT') {
 
-		} 
-		
-		break;
-	    }
+                $record_array[$id]['urls'] = array();
 
-	}
+                foreach($fileGrp->childNodes as $file) {
+                    if ($file->nodeType == 3) continue; // text node
+                    $img_id = $file->getAttribute('ID');
 
-	
+                    $pos = strrpos($img_id, '_');
+
+                    $record_array[$id]['urls'][] = substr($file->getAttribute('ID'), ($pos+1));
+
+                }
+
+                break;
+            }
+
+        }
+
+
 
 
         echo 'Request num: ' . $counter .  ', record: ' . $rec_counter++ . PHP_EOL;
@@ -176,7 +176,7 @@ do {
         echo '---------------------------' . PHP_EOL;
         echo '---------------------------' . PHP_EOL;
         unset($id);
-	
+
 
     }
 
