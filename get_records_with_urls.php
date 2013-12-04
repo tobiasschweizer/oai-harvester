@@ -59,6 +59,12 @@ $conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=ListRecord
 $xml = new DOMDocument();
 $xml->loadXML($conts);
 
+$date = $xml->getElementsByTagName('responseDate');
+$date = $date->item(0)->textContent;
+
+echo 'Starting Harvesting ' .PHP_EOL;
+echo $date . PHP_EOL . PHP_EOL;
+
 $token = $xml->getElementsByTagName('resumptionToken');
 
 if (file_exists($provider . '_records.json')) {
@@ -69,6 +75,8 @@ if (file_exists($provider . '_records.json')) {
 $file_ptr = fopen($provider . '_records.json', 'w');
 
 $counter = 1;
+
+
 do {
 
 
@@ -167,8 +175,6 @@ do {
             }
 
         }
-
-
 
 
         echo 'Request num: ' . $counter .  ', record: ' . $rec_counter++ . PHP_EOL;
