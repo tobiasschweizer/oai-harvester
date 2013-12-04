@@ -22,22 +22,34 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+function print_usage($out) {
+    fwrite($out, 'Usage: get_records_with_urls.php e-rara|e-manuscripta [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL);
+    fwrite($out, 'Limit request by specifying a datestamp (records created modified >= specified datestamp)' . PHP_EOL);
+}
+
 
 $record_array = array();
 
 if ($argc < 2) {
-    echo 'Usage: get_records_with_urls.php e-rara|e-manuscripta [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL;
-    echo 'Limit request by specifying a datestamp (records created modified >= specified datestamp)' . PHP_EOL;
-    exit(0);
+    print_usage(STDERR);
+    exit(1);
 }
 
 if ($argv[1] == 'e-rara') {
     $provider = 'e-rara';
+    $base_url = 'http://www.e-rara.ch';
+    $oai_frag = '/oai';
 } elseif ($argv[1] == 'e-manuscripta') {
     $provider = 'e-manuscripta';
+    $base_url = 'http://www.e-manuscripta.ch';
+    $oai_frag = '/oai/';
+} elseif ($argv[1] == 'heidi') {
+    $provider = 'heidi';
+    $base_url = 'http://digi.ub.uni-heidelberg.de';
+    $oai_frag = '/cgi-bin/digioai.cgi/';
+
 } else {
-    echo 'Usage: get_records_with_urls.php e-rara|e-manuscripta [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL;
-    echo 'Limit request by specifying a datestamp (records created modified >= specified datestamp)' . PHP_EOL;
+    print_usage(STDERR);
     exit(1);
 }
 
@@ -48,13 +60,13 @@ if ($argc == 3) {
 
     // check $datestamp
     if (preg_match('/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/', $datestamp) !== 1) {
-        echo 'Datestamp format is invalid' . PHP_EOL;
+        fwrite(STDERR, 'Datestamp format is invalid' . PHP_EOL);
         exit(1);
     }
     $datestr = '&from=' . $datestamp;
 }
 
-$conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=ListRecords&metadataPrefix=oai_dc' . $datestr);
+$conts = file_get_contents($base_url. $oai_frag . '?verb=ListRecords&metadataPrefix=oai_dc' . $datestr);
 
 $xml = new DOMDocument();
 $xml->loadXML($conts);
@@ -69,7 +81,7 @@ $token = $xml->getElementsByTagName('resumptionToken');
 
 if (file_exists($provider . '_records.json')) {
     echo 'Existing file ' . $provider . '_records.json would be overwritten, please move it to another destination before runing this application' . PHP_EOL;
-    exit(1);
+    exit(0);
 }
 
 $file_ptr = fopen($provider . '_records.json', 'w');
@@ -146,39 +158,73 @@ do {
 
 
         // get file ids by using the mets metadata prefix
-        $mets_conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=GetRecord&metadataPrefix=mets&identifier=' . $identifier);
-        $mets_xml = new DOMDocument();
-        $mets_xml->loadXML($mets_conts);
+        $mets_conts = file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $identifier);
 
-        $ns = $mets_xml->lookupNamespaceURI('mets');
-        $fileSec = $mets_xml->getElementsByTagNameNS($ns, 'fileSec');
+        
+        if ($provider == 'e-rara' || $provider == 'e-manuscripta') {
+
+	    $mets_xml = new DOMDocument();
+	    $mets_xml->loadXML($mets_conts);
+
+            $ns = $mets_xml->lookupNamespaceURI('mets');
+            $fileSec = $mets_xml->getElementsByTagNameNS($ns, 'fileSec');
+
+	    $record_array[$id]['urls'] = array();
+	    $record_array[$id]['urls']['max'] = array();
+	    $record_array[$id]['urls']['thumb'] = array();
 
 
-        foreach ($fileSec->item(0)->childNodes as $fileGrp) {
-            if ($fileGrp->nodeType == 3) continue; // text node
+            foreach ($fileSec->item(0)->childNodes as $fileGrp) {
+                if ($fileGrp->nodeType == 3) continue; // text node
 
-            if ($fileGrp->getAttribute('USE') == 'DEFAULT') {
+                if ($fileGrp->getAttribute('USE') == 'MAX') {
 
-                $record_array[$id]['urls'] = array();
+                    
+                    foreach($fileGrp->childNodes as $file) {
+                        if ($file->nodeType == 3) continue; // text node
 
-                foreach($fileGrp->childNodes as $file) {
-                    if ($file->nodeType == 3) continue; // text node
-                    $img_id = $file->getAttribute('ID');
 
-                    $pos = strrpos($img_id, '_');
 
-                    $record_array[$id]['urls'][] = substr($file->getAttribute('ID'), ($pos+1));
+                        $img_id = $file->getAttribute('ID');
+                        $pos = strrpos($img_id, '_');
 
+                        $img_id = substr($file->getAttribute('ID'), ($pos+1));
+                        $record_array[$id]['urls']['max'][] = $base_url . '/image/view/' . $img_id;
+                        $record_array[$id]['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
+
+
+
+
+                        
+
+
+                    }
+
+                    break;
                 }
 
-                break;
             }
 
-        }
+        } elseif ($provider == 'heidi') {
 
+	    /*$ns_xlink = $mets_xml->lookupNamespaceURI('xlink');
+
+	      foreach ($fileGrp->childNodes as $loc) {
+	      if ($loc->nodeType == 3) continue; // text node
+	      
+	      $record_array[$id]['urls']['max'][] = $file->getAttributeNS($ns_xlink, 'href');
+	      
+	      }*/
+
+
+	}
+
+	if (count($record_array[$id]['urls']['max']) == 0 || count($record_array[$id]['urls']['thumb']) == 0) fwrite(STDERR, 'No images given for ' . $id . PHP_EOL);
+	if (count($record_array[$id]['urls']['max']) != count($record_array[$id]['urls']['thumb'])) fwrite(STDERR, 'Number of max images not equals number of thumbs for ' . $id . PHP_EOL);
 
         echo 'Request num: ' . $counter .  ', record: ' . $rec_counter++ . PHP_EOL;
-        print_r($record_array[$id]);
+        echo $id . PHP_EOL;
+	print_r($record_array[$id]);
         echo '---------------------------' . PHP_EOL;
         echo '---------------------------' . PHP_EOL;
         unset($id);
@@ -189,7 +235,7 @@ do {
     // setup new xml
     if ($token->length == 0) break; // no token anymore
 
-    $conts = file_get_contents('http://www.' . $provider . '.ch/oai/?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
+    $conts = file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
     $xml = new DOMDocument();
     $xml->loadXML($conts);
 
