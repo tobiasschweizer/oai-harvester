@@ -23,8 +23,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 function print_usage($out) {
-    fwrite($out, 'Usage: get_records_with_urls.php e-rara|e-manuscripta [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL);
-    fwrite($out, 'Limit request by specifying a datestamp (records created modified >= specified datestamp)' . PHP_EOL);
+    fwrite($out, 'Usage: get_records_with_urls.php e-rara|e-manuscripta|heidi [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL);
+    fwrite($out, 'Limit request by specifying a datestamp in MEZ - 1h (records created modified >= specified datestamp)' . PHP_EOL . PHP_EOL);
+    fwrite($out, 'The script will create a json-File with the chosen provider (e-rara|e-manuscripta|heidi) as prefix.' . PHP_EOL);
+    fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidi)' . PHP_EOL);
 }
 
 
@@ -80,8 +82,8 @@ echo $date . PHP_EOL . PHP_EOL;
 $token = $xml->getElementsByTagName('resumptionToken');
 
 if (file_exists($provider . '_records.json')) {
-    echo 'Existing file ' . $provider . '_records.json would be overwritten, please move it to another destination before runing this application' . PHP_EOL;
-    exit(0);
+    fwrite(STDERR, 'Existing file ' . $provider . '_records.json would be overwritten, please move it to another destination before runing this application' . PHP_EOL);
+    exit(1);
 }
 
 $file_ptr = fopen($provider . '_records.json', 'w');
@@ -207,15 +209,29 @@ do {
 
         } elseif ($provider == 'heidi') {
 
-	    /*$ns_xlink = $mets_xml->lookupNamespaceURI('xlink');
+	    $record_array[$id]['urls'] = array();
+	    $record_array[$id]['urls']['max'] = array();
+	    $record_array[$id]['urls']['thumb'] = array();
 
-	      foreach ($fileGrp->childNodes as $loc) {
-	      if ($loc->nodeType == 3) continue; // text node
-	      
-	      $record_array[$id]['urls']['max'][] = $file->getAttributeNS($ns_xlink, 'href');
-	      
-	      }*/
+	    $mets_xml = new SimpleXMLElement($mets_conts);
+	    $ns = $mets_xml->getDocNamespaces(TRUE);
 
+	    $mets_xml->registerXPathNamespace('mets', $ns['mets']);
+	    $mets_xml->registerXPathNamespace('xlink', $ns['xlink']);
+	    $full_imgs = $mets_xml->xpath('//mets:fileGrp[@USE="MAX"]/mets:file/mets:FLocat');
+	    $thumbs_imgs = $mets_xml->xpath('//mets:fileGrp[@USE="THUMBS"]/mets:file/mets:FLocat');
+
+	    foreach ($full_imgs as $full_img) {
+	    	foreach ($full_img->attributes($ns['xlink']) as $url) {
+		    $record_array[$id]['urls']['max'][] = $url->__toString();
+		}
+	    } 
+	    
+	    foreach ($thumbs_imgs as $thumb_img) {
+	    	foreach ($thumb_img->attributes($ns['xlink']) as $url) {
+		    $record_array[$id]['urls']['thumb'][] = $url->__toString();
+		}
+	    }
 
 	}
 
