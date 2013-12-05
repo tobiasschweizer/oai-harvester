@@ -1,4 +1,4 @@
-This script allows for harvesting of digital repositories using OAI-PMH and includes also die image-paths
+This script allows for harvesting of digital repositories using OAI-PMH and includes also the image-paths
 
 
 Call this script on a regular basis providing a datestamp in order to harvest selectively:
