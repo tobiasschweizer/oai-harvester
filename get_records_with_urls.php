@@ -23,10 +23,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 function print_usage($out) {
-    fwrite($out, 'Usage: get_records_with_urls.php e-rara|e-manuscripta|heidi [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL);
+    fwrite($out, 'Usage: get_records_with_urls.php e-rara|e-manuscripta|heidelberg [yyyy-mm-ddThh:mm:ssZ]' . PHP_EOL);
     fwrite($out, 'Limit request by specifying a datestamp in MEZ - 1h (records created modified >= specified datestamp)' . PHP_EOL . PHP_EOL);
-    fwrite($out, 'The script will create a json-File with the chosen provider (e-rara|e-manuscripta|heidi) as prefix.' . PHP_EOL);
-    fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidi)' . PHP_EOL);
+    fwrite($out, 'The script will create a json-File with the chosen provider (e-rara|e-manuscripta|heidelberg) as prefix.' . PHP_EOL);
+    fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidelberg)' . PHP_EOL);
 }
 
 
@@ -45,8 +45,8 @@ if ($argv[1] == 'e-rara') {
     $provider = 'e-manuscripta';
     $base_url = 'http://www.e-manuscripta.ch';
     $oai_frag = '/oai/';
-} elseif ($argv[1] == 'heidi') {
-    $provider = 'heidi';
+} elseif ($argv[1] == 'heidelberg') {
+    $provider = 'heidelberg';
     $base_url = 'http://digi.ub.uni-heidelberg.de';
     $oai_frag = '/cgi-bin/digioai.cgi/';
 
@@ -207,7 +207,7 @@ do {
 
             }
 
-        } elseif ($provider == 'heidi') {
+        } elseif ($provider == 'heidelberg') {
 
 	    $record_array[$id]['urls'] = array();
 	    $record_array[$id]['urls']['max'] = array();
