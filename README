@@ -1,3 +1,6 @@
+This script allows for harvesting of digital repositories using OAI-PMH and includes also die image-paths
+
+
 Call this script on a regular basis providing a datestamp in order to harvest selectively:
 
 The following call of date provides a datestamp 24h and 1m ago (and reduced by one hour according to Greenwich Z)
