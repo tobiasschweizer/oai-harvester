@@ -79,6 +79,8 @@ $date = $date->item(0)->textContent;
 echo 'Starting Harvesting ' .PHP_EOL;
 echo $date . PHP_EOL . PHP_EOL;
 
+$record_array['datestamp'] = $date; 
+
 $token = $xml->getElementsByTagName('resumptionToken');
 
 if (file_exists($provider . '_records.json')) {
@@ -161,7 +163,7 @@ do {
 
         // get file ids by using the mets metadata prefix
         $mets_conts = file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $identifier);
-
+	sleep(2);
         
         if ($provider == 'e-rara' || $provider == 'e-manuscripta') {
 
@@ -193,11 +195,6 @@ do {
                         $img_id = substr($file->getAttribute('ID'), ($pos+1));
                         $record_array[$id]['urls']['max'][] = $base_url . '/image/view/' . $img_id;
                         $record_array[$id]['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
-
-
-
-
-                        
 
 
                     }
@@ -252,6 +249,8 @@ do {
     if ($token->length == 0) break; // no token anymore
 
     $conts = file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
+    sleep(1);
+    
     $xml = new DOMDocument();
     $xml->loadXML($conts);
 
