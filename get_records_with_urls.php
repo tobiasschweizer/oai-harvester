@@ -116,7 +116,6 @@ do {
                     if ($header_node->nodeName == 'identifier') {
                         $id = $header_node->nodeValue;
                     }
-
          
                     if (array_key_exists($header_node->nodeName, $record_array['header'])) {
                         if (!is_array($record_array['header'][$header_node->nodeName])) {
@@ -151,12 +150,19 @@ do {
                 }
             }
 
-
         }
 
 
         // get file ids by using the mets metadata prefix
-        $mets_conts = file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
+        $mets_conts = @file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
+	if ($mets_conts === FALSE) {
+	    // no response
+	    fwrite(STDERR, $base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id . PHP_EOL);
+	    fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+	    fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+	    break 2;
+	}
+
 	sleep(2);
         
         if ($provider == 'e-rara' || $provider == 'e-manuscripta') {
@@ -171,7 +177,6 @@ do {
 	    $record_array['urls']['max'] = array();
 	    $record_array['urls']['thumb'] = array();
 
-
             foreach ($fileSec->item(0)->childNodes as $fileGrp) {
                 if ($fileGrp->nodeType == 3) continue; // text node
 
@@ -181,15 +186,12 @@ do {
                     foreach($fileGrp->childNodes as $file) {
                         if ($file->nodeType == 3) continue; // text node
 
-
-
                         $img_id = $file->getAttribute('ID');
                         $pos = strrpos($img_id, '_');
 
                         $img_id = substr($file->getAttribute('ID'), ($pos+1));
                         $record_array['urls']['max'][] = $base_url . '/image/view/' . $img_id;
                         $record_array['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
-
 
                     }
 
@@ -235,7 +237,6 @@ do {
         echo '---------------------------' . PHP_EOL;
         echo '---------------------------' . PHP_EOL;
         
-
 	// write part of json
 	fwrite($file_ptr, '"' . $id . '"' . ':' . json_encode($record_array)); 
 	
@@ -245,9 +246,17 @@ do {
     }
 
     // setup new xml
-    if ($token->length == 0) break; // no token anymore
+    if ($token->length == 0) break; // no token anymore, leave loop 
 
-    $conts = file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
+    $conts = @file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
+    if ($conts === FALSE) {
+	// no response
+	fwrite(STDERR, $base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent . PHP_EOL);
+	fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+	fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+	break;
+    }
+    
     sleep(1);
     
     $xml = new DOMDocument();
