@@ -29,9 +29,6 @@ function print_usage($out) {
     fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidelberg)' . PHP_EOL);
 }
 
-
-$record_array = array();
-
 if ($argc < 2) {
     print_usage(STDERR);
     exit(1);
@@ -76,10 +73,7 @@ $xml->loadXML($conts);
 $date = $xml->getElementsByTagName('responseDate');
 $date = $date->item(0)->textContent;
 
-echo 'Starting Harvesting ' .PHP_EOL;
-echo $date . PHP_EOL . PHP_EOL;
-
-$record_array['datestamp'] = $date; 
+$record_array = array();
 
 $token = $xml->getElementsByTagName('resumptionToken');
 
@@ -89,18 +83,22 @@ if (file_exists($provider . '_records.json')) {
 }
 
 $file_ptr = fopen($provider . '_records.json', 'w');
+fwrite($file_ptr, '{"datestamp":"'. $date  .'"');
+
+echo 'Starting Harvesting ' .PHP_EOL;
+echo $date . PHP_EOL . PHP_EOL;
 
 $counter = 1;
 
-
 do {
-
-
+    
     $rec_counter = 1;
 
     $records = $xml->getElementsByTagName('record');
     foreach ($records as $record) {
         // foreach record node
+
+	fwrite($file_ptr, ',');
 
         foreach ($record->childNodes as $rec_node) {
             // inside a record
@@ -240,10 +238,16 @@ do {
 	print_r($record_array[$id]);
         echo '---------------------------' . PHP_EOL;
         echo '---------------------------' . PHP_EOL;
-        unset($id);
+        
 
-
+	// write part of json
+	fwrite($file_ptr, '"' . $id . '"' . ':' . json_encode($record_array[$id])); 
+	
+	unset($id);
+	//break;
     }
+
+    break;
 
     // setup new xml
     if ($token->length == 0) break; // no token anymore
@@ -260,7 +264,8 @@ do {
 
 } while(true);
 
-fwrite($file_ptr, json_encode($record_array));
+//fwrite($file_ptr, json_encode($record_array));
+fwrite($file_ptr, '}');
 fclose($file_ptr);
 
 exit(0);
