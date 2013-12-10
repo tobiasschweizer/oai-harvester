@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -73,8 +74,6 @@ $xml->loadXML($conts);
 $date = $xml->getElementsByTagName('responseDate');
 $date = $date->item(0)->textContent;
 
-$record_array = array();
-
 $token = $xml->getElementsByTagName('resumptionToken');
 
 if (file_exists($provider . '_records.json')) {
@@ -98,6 +97,10 @@ do {
     foreach ($records as $record) {
         // foreach record node
 
+	$record_array = array();
+	$record_array['header'] =  array();
+	$record_array['metadata'] =  array();
+
 	fwrite($file_ptr, ',');
 
         foreach ($record->childNodes as $rec_node) {
@@ -111,26 +114,19 @@ do {
                     if ($header_node->nodeType == 3) continue; // text node
 
                     if ($header_node->nodeName == 'identifier') {
-                        $identifier = $header_node->nodeValue;
+                        $id = $header_node->nodeValue;
                     }
 
-                    if (!isset($id)) $id = $header_node->nodeValue;
-
-                    if (!array_key_exists($id, $record_array)) {
-                        $record_array[$id] =  array();
-                        $record_array[$id]['header'] =  array();
-                        $record_array[$id]['metadata'] =  array();
-                    }
-
-                    if (array_key_exists($header_node->nodeName, $record_array[$id]['header'])) {
-                        if (!is_array($record_array[$id]['header'][$header_node->nodeName])) {
-                            $tmp = $record_array[$id]['header'][$header_node->nodeName];
-                            $record_array[$id]['header'][$header_node->nodeName] = array();
-                            $record_array[$id]['header'][$header_node->nodeName][] = $tmp;
+         
+                    if (array_key_exists($header_node->nodeName, $record_array['header'])) {
+                        if (!is_array($record_array['header'][$header_node->nodeName])) {
+                            $tmp = $record_array['header'][$header_node->nodeName];
+                            $record_array['header'][$header_node->nodeName] = array();
+                            $record_array['header'][$header_node->nodeName][] = $tmp;
                         }
-                        $record_array[$id]['header'][$header_node->nodeName][] = $header_node->textContent;
+                        $record_array['header'][$header_node->nodeName][] = $header_node->textContent;
                     } else {
-                        $record_array[$id]['header'][$header_node->nodeName] = $header_node->textContent;
+                        $record_array['header'][$header_node->nodeName] = $header_node->textContent;
                     }
                 }
 
@@ -141,15 +137,15 @@ do {
                     foreach ($metadata_node->childNodes as $metadata_node_item) {
                         if ($metadata_node_item->nodeType == 3) continue; // text node
 
-                        if (array_key_exists($metadata_node_item->nodeName, $record_array[$id]['metadata'])) {
-                            if (!is_array($record_array[$id]['metadata'][$metadata_node_item->nodeName])) {
-                                $tmp = $record_array[$id]['metadata'][$metadata_node_item->nodeName];
-                                $record_array[$id]['metadata'][$metadata_node_item->nodeName] = array();
-                                $record_array[$id]['metadata'][$metadata_node_item->nodeName][] = $tmp;
+                        if (array_key_exists($metadata_node_item->nodeName, $record_array['metadata'])) {
+                            if (!is_array($record_array['metadata'][$metadata_node_item->nodeName])) {
+                                $tmp = $record_array['metadata'][$metadata_node_item->nodeName];
+                                $record_array['metadata'][$metadata_node_item->nodeName] = array();
+                                $record_array['metadata'][$metadata_node_item->nodeName][] = $tmp;
                             }
-                            $record_array[$id]['metadata'][$metadata_node_item->nodeName][] = $metadata_node_item->textContent;
+                            $record_array['metadata'][$metadata_node_item->nodeName][] = $metadata_node_item->textContent;
                         } else {
-                            $record_array[$id]['metadata'][$metadata_node_item->nodeName] = $metadata_node_item->textContent;
+                            $record_array['metadata'][$metadata_node_item->nodeName] = $metadata_node_item->textContent;
                         }
                     }
                 }
@@ -160,7 +156,7 @@ do {
 
 
         // get file ids by using the mets metadata prefix
-        $mets_conts = file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $identifier);
+        $mets_conts = file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
 	sleep(2);
         
         if ($provider == 'e-rara' || $provider == 'e-manuscripta') {
@@ -171,9 +167,9 @@ do {
             $ns = $mets_xml->lookupNamespaceURI('mets');
             $fileSec = $mets_xml->getElementsByTagNameNS($ns, 'fileSec');
 
-	    $record_array[$id]['urls'] = array();
-	    $record_array[$id]['urls']['max'] = array();
-	    $record_array[$id]['urls']['thumb'] = array();
+	    $record_array['urls'] = array();
+	    $record_array['urls']['max'] = array();
+	    $record_array['urls']['thumb'] = array();
 
 
             foreach ($fileSec->item(0)->childNodes as $fileGrp) {
@@ -191,8 +187,8 @@ do {
                         $pos = strrpos($img_id, '_');
 
                         $img_id = substr($file->getAttribute('ID'), ($pos+1));
-                        $record_array[$id]['urls']['max'][] = $base_url . '/image/view/' . $img_id;
-                        $record_array[$id]['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
+                        $record_array['urls']['max'][] = $base_url . '/image/view/' . $img_id;
+                        $record_array['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
 
 
                     }
@@ -204,9 +200,9 @@ do {
 
         } elseif ($provider == 'heidelberg') {
 
-	    $record_array[$id]['urls'] = array();
-	    $record_array[$id]['urls']['max'] = array();
-	    $record_array[$id]['urls']['thumb'] = array();
+	    $record_array['urls'] = array();
+	    $record_array['urls']['max'] = array();
+	    $record_array['urls']['thumb'] = array();
 
 	    $mets_xml = new SimpleXMLElement($mets_conts);
 	    $ns = $mets_xml->getDocNamespaces(TRUE);
@@ -218,36 +214,35 @@ do {
 
 	    foreach ($full_imgs as $full_img) {
 	    	foreach ($full_img->attributes($ns['xlink']) as $url) {
-		    $record_array[$id]['urls']['max'][] = $url->__toString();
+		    $record_array['urls']['max'][] = $url->__toString();
 		}
 	    } 
 	    
 	    foreach ($thumbs_imgs as $thumb_img) {
 	    	foreach ($thumb_img->attributes($ns['xlink']) as $url) {
-		    $record_array[$id]['urls']['thumb'][] = $url->__toString();
+		    $record_array['urls']['thumb'][] = $url->__toString();
 		}
 	    }
 
 	}
 
-	if (count($record_array[$id]['urls']['max']) == 0 || count($record_array[$id]['urls']['thumb']) == 0) fwrite(STDERR, 'No images given for ' . $id . PHP_EOL);
-	if (count($record_array[$id]['urls']['max']) != count($record_array[$id]['urls']['thumb'])) fwrite(STDERR, 'Number of max images not equals number of thumbs for ' . $id . PHP_EOL);
+	if (count($record_array['urls']['max']) == 0 || count($record_array['urls']['thumb']) == 0) fwrite(STDERR, 'No images given for ' . $id . PHP_EOL);
+	if (count($record_array['urls']['max']) != count($record_array['urls']['thumb'])) fwrite(STDERR, 'Number of max images not equals number of thumbs for ' . $id . PHP_EOL);
 
         echo 'Request num: ' . $counter .  ', record: ' . $rec_counter++ . PHP_EOL;
         echo $id . PHP_EOL;
-	print_r($record_array[$id]);
+	print_r($record_array);
         echo '---------------------------' . PHP_EOL;
         echo '---------------------------' . PHP_EOL;
         
 
 	// write part of json
-	fwrite($file_ptr, '"' . $id . '"' . ':' . json_encode($record_array[$id])); 
+	fwrite($file_ptr, '"' . $id . '"' . ':' . json_encode($record_array)); 
 	
 	unset($id);
-	//break;
-    }
+	unset($record_array);
 
-    break;
+    }
 
     // setup new xml
     if ($token->length == 0) break; // no token anymore
@@ -264,7 +259,6 @@ do {
 
 } while(true);
 
-//fwrite($file_ptr, json_encode($record_array));
 fwrite($file_ptr, '}');
 fclose($file_ptr);
 
