@@ -34,14 +34,19 @@ function print_usage($out) {
     fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidelberg)' . PHP_EOL);
 }
 
+if ($argc < 2) {
+    print_usage(STDERR);
+    exit(1);
+}
+
 // these params are optional, init them with default values
 $set = '';
 $datestr = '';
 $listsets = FALSE;
 $verbose = FALSE;
 
-for ($i = 1; $i < $_SERVER['argc']; $i++) {
-    if ($_SERVER['argv'][$i] == '-rep') {
+for ($i = 1; $i < $argc; $i++) {
+    if ($argv[$i] == '-rep') {
         $i++;
 
         if (!isset($argv[$i])) {
@@ -66,7 +71,7 @@ for ($i = 1; $i < $_SERVER['argc']; $i++) {
             exit(1);
         }
     }
-    if ($_SERVER['argv'][$i] == '-date') {
+    if ($argv[$i] == '-date') {
         $i++;
 
         if (!isset($argv[$i])) {
@@ -85,7 +90,7 @@ for ($i = 1; $i < $_SERVER['argc']; $i++) {
         $datestr = '&from=' . $datestamp;
 
     }
-    if ($_SERVER['argv'][$i] == '-set') {
+    if ($argv[$i] == '-set') {
         $i++;
 
         if (!isset($argv[$i])) {
@@ -93,13 +98,13 @@ for ($i = 1; $i < $_SERVER['argc']; $i++) {
             exit(1);
         }
 
-        $set = '&set=' . $_SERVER['argv'][$i];
+        $set = '&set=' . $argv[$i];
     }
-    if ($_SERVER['argv'][$i] == '-list-sets') {
+    if ($argv[$i] == '-list-sets') {
 
         $listsets = TRUE;
     }
-    if ($_SERVER['argv'][$i] == '-v') {
+    if ($argv[$i] == '-v') {
 
         $verbose = TRUE;
     }
