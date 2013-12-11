@@ -100,10 +100,10 @@ for ($i = 1; $i < $_SERVER['argc']; $i++) {
         $listsets = TRUE;
     }
     if ($_SERVER['argv'][$i] == '-v') {
-	
+
         $verbose = TRUE;
     }
-    
+
 }
 
 unset($i);
@@ -121,15 +121,19 @@ if ($listsets) {
 
     $xml = new DOMDocument();
     $xml->loadXML($sets);
+    $token = $xml->getElementsByTagName('resumptionToken');
 
     $sets = $xml->getElementsByTagName('set');
 
     if ($sets->length == 0) {
-        echo 'No sets for the given provider' . PHP_EOL;
+            echo 'No sets for the given provider' . PHP_EOL;
+	    exit(0);
+    }
 
-    } else {
+    echo 'The following sets exist (please specify the name without double quotes for the -set option):' . PHP_EOL . PHP_EOL;
 
-	echo 'The following sets exist (please specify the name without double quotes for the -set option):' . PHP_EOL . PHP_EOL;
+    do {
+                
         foreach ($sets as $set) {
             // inside a record
             if ($set->nodeName == 3) continue; // text node
@@ -138,15 +142,25 @@ if ($listsets) {
                 // inside a record
                 if ($set_path->nodeName == 3) continue; // text node
 
-		if ($set_path->nodeName == 'setSpec') echo "\t\"" . $set_path->textContent . '", ';
-		if ($set_path->nodeName == 'setName') echo $set_path->textContent . PHP_EOL;
+                if ($set_path->nodeName == 'setSpec') echo "\t\"" . $set_path->textContent . '", ';
+                if ($set_path->nodeName == 'setName') echo $set_path->textContent . PHP_EOL;
             }
 
-	    echo PHP_EOL;
+            echo PHP_EOL;
 
         }
-        
-    }
+
+        if ($token->length == 0) break;
+
+        $sets = file_get_contents($base_url. $oai_frag . '?verb=ListSets&resumptionToken=' . $token->item(0)->textContent);
+
+        $xml = new DOMDocument();
+        $xml->loadXML($sets);
+        $token = $xml->getElementsByTagName('resumptionToken');
+
+        $sets = $xml->getElementsByTagName('set');
+
+    } while(true);
     exit(0);
 }
 
@@ -324,14 +338,14 @@ do {
         if (count($record_array['urls']['max']) != count($record_array['urls']['thumb'])) fwrite(STDERR, 'Number of max images not equals number of thumbs for ' . $id . PHP_EOL);
 
         echo 'Request num: ' . $counter .  ', record: ' . $rec_counter++ . PHP_EOL;
-        
-	if ($verbose) {
-	    echo $id . PHP_EOL;
-	    print_r($record_array);
-	    echo '---------------------------' . PHP_EOL;
-	    echo '---------------------------' . PHP_EOL;
-	}
-	
+
+        if ($verbose) {
+            echo $id . PHP_EOL;
+            print_r($record_array);
+            echo '---------------------------' . PHP_EOL;
+            echo '---------------------------' . PHP_EOL;
+        }
+
         // write part of json
         fwrite($file_ptr, '"' . $id . '"' . ':' . json_encode($record_array));
 
