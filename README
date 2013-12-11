@@ -1,8 +1,14 @@
+-------------------------------------------------------------------------------
+
+-------------  USE THIS SCRIPT FROM THE COMMAND LINE (PHP CLI)  ---------------
+
+-------------------------------------------------------------------------------
+
 This script allows for harvesting of digital repositories using OAI-PMH and includes also the image-paths
 
+For usage information, call the script without any parameters: php get_records_with_urls.php
 
 Call this script on a regular basis providing a datestamp in order to harvest selectively:
-
 The following call of date provides a datestamp 24h and 1m ago (and reduced by one hour according to Greenwich Z)
 
      date --date="1 days ago 1 hours ago 1 minutes ago" +"%Y-%m-%dT%H:%M:%SZ"
