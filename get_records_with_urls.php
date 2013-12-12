@@ -1,6 +1,6 @@
 <?php
 /**
- * Author: Tobias Schweizer, Digital Humanities Lab, University of Basel,
+ * Author: Tobias Schweizer, Digital Humanities Lab, University of Basel
  * Contact: t.schweizer@unibas.ch
  *
  * Version: 0.9
@@ -24,11 +24,12 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 function print_usage($out) {
-    fwrite($out, 'Usage: get_records_with_urls.php -rep e-rara|e-manuscripta|heidelberg [-v] [-date yyyy-mm-ddThh:mm:ssZ] [-set set] [-list-sets]' . PHP_EOL . PHP_EOL);
-    fwrite($out, 'Limit requests by specifying a datestamp in MEZ - 1h: records created or modified >= specified datestamp (option -date)' . PHP_EOL);
-    fwrite($out, 'Limit requests by specifying a subset (option -set)' . PHP_EOL);
-    fwrite($out, 'To get a list of the existing sets for a specific provider, use the option -list-sets' . PHP_EOL);
-    fwrite($out, 'To get a list of the imported records to stdout, set the -v option (verbose)' . PHP_EOL . PHP_EOL);
+    fwrite($out, 'Usage: get_records_with_urls.php -rep e-rara|e-manuscripta|heidelberg [-date yyyy-mm-ddThh:mm:ssZ] [-set set] [--list-sets] [-xml directory] [-v]' . PHP_EOL . PHP_EOL);
+    fwrite($out, " -date\t\tLimit requests by specifying a datestamp in MEZ - 1h: records created or modified >= specified datestamp" . PHP_EOL);
+    fwrite($out, " -set\t\tLimit requests by specifying a set" . PHP_EOL);
+    fwrite($out, " --list-sets\tTo get a list of the existing sets for a specific provider (no records are being downloaded using this option)" . PHP_EOL);
+    fwrite($out, " -xml\t\tSpecifiy a directory to save the xml record-description files (mets) locally" . PHP_EOL);
+    fwrite($out, " -v \t\tTo get a list of the imported records to stdout (verbose) " . PHP_EOL . PHP_EOL);
 
     fwrite($out, 'The script will create a json-File with the chosen provider (e-rara|e-manuscripta|heidelberg) as prefix.' . PHP_EOL);
     fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidelberg)' . PHP_EOL);
@@ -44,6 +45,7 @@ $set = '';
 $datestr = '';
 $listsets = FALSE;
 $verbose = FALSE;
+$store_xml = FALSE;
 
 for ($i = 1; $i < $argc; $i++) {
     if ($argv[$i] == '-rep') {
@@ -90,6 +92,40 @@ for ($i = 1; $i < $argc; $i++) {
         $datestr = '&from=' . $datestamp;
 
     }
+    if ($argv[$i] == '-xml') {
+        $i++;
+
+        if (!isset($argv[$i])) {
+            print_usage(STDERR);
+            exit(1);
+        }
+
+        // make sure there is an ending slash
+        if (!(substr($argv[$i], -1) === '/'))  {
+            $argv[$i] .= '/';
+        }
+
+        // check if given dir exists
+        if (is_dir($argv[$i])) {
+
+            if (!is_writable($argv[$i])) {
+                fwrite(STDERR, 'No write permissions for directory ' . $argv[$i] . PHP_EOL);
+                exit(1);
+            }
+
+
+
+            $store_xml = $argv[$i];
+        } else {
+            // create directory
+            if(!mkdir($argv[$i])) {
+                fwrite(STDERR, 'No permissions to create directory ' . $argv[$i] . PHP_EOL);
+                exit(1);
+            }
+
+            $store_xml = $argv[$i];
+        }
+    }
     if ($argv[$i] == '-set') {
         $i++;
 
@@ -100,7 +136,7 @@ for ($i = 1; $i < $argc; $i++) {
 
         $set = '&set=' . $argv[$i];
     }
-    if ($argv[$i] == '-list-sets') {
+    if ($argv[$i] == '--list-sets') {
 
         $listsets = TRUE;
     }
@@ -110,6 +146,7 @@ for ($i = 1; $i < $argc; $i++) {
     }
 
 }
+
 
 unset($i);
 
@@ -123,6 +160,13 @@ if (!isset($provider)) {
 if ($listsets) {
     // provide the sets for the given provider
     $sets = file_get_contents($base_url. $oai_frag . '?verb=ListSets');
+    if ($sets === FALSE) {
+        // no response
+        fwrite(STDERR, $base_url. $oai_frag . '?verb=ListSets' . PHP_EOL);
+        fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+        fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+        exit(1);
+    }
 
     $xml = new DOMDocument();
     $xml->loadXML($sets);
@@ -131,14 +175,14 @@ if ($listsets) {
     $sets = $xml->getElementsByTagName('set');
 
     if ($sets->length == 0) {
-            echo 'No sets for the given provider' . PHP_EOL;
-	    exit(0);
+        echo 'No sets for the given provider' . PHP_EOL;
+        exit(0);
     }
 
     echo 'The following sets exist (please specify the name without double quotes for the -set option):' . PHP_EOL . PHP_EOL;
 
     do {
-                
+
         foreach ($sets as $set) {
             // inside a record
             if ($set->nodeName == 3) continue; // text node
@@ -158,6 +202,13 @@ if ($listsets) {
         if ($token->length == 0) break;
 
         $sets = file_get_contents($base_url. $oai_frag . '?verb=ListSets&resumptionToken=' . $token->item(0)->textContent);
+        if ($sets === FALSE) {
+            // no response
+            fwrite(STDERR, $base_url. $oai_frag . '?verb=ListSets' . PHP_EOL);
+            fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+            fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+            exit(1);
+        }
 
         $xml = new DOMDocument();
         $xml->loadXML($sets);
@@ -272,6 +323,15 @@ do {
             fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
             fwrite(STDERR, $http_response_header[0] . PHP_EOL);
             break 2;
+        }
+
+        if ($store_xml !== FALSE) {
+            // write mets to local filesystem
+
+            $tmp_ptr = fopen($store_xml . $id . '.xml', 'w');
+            fwrite($tmp_ptr, $mets_conts);
+            fclose($tmp_ptr);
+            unset($tmp_ptr);
         }
 
         sleep(2);
