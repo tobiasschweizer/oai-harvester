@@ -229,7 +229,7 @@ if ($listsets) {
 
         $sets = $xml->getElementsByTagName('set');
 
-    } while(true);
+    } while (true);
     unset($token);
     exit(0);
 }
@@ -346,15 +346,27 @@ do {
 
 
         // get file ids by using the mets metadata prefix
-        $mets_conts = @file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
-        if ($mets_conts === FALSE) {
-            // no response
-            fwrite(STDERR, $base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id . PHP_EOL);
-            fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
-            fwrite(STDERR, $http_response_header[0] . PHP_EOL);
-	    fwrite(STDERR, 'Resume harvesting using this token: ' . $cur_token . PHP_EOL);
-            break 2;
-        }
+	$loop = FALSE;
+	$loop_cnt = 0;
+	do {
+	    $mets_conts = @file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
+	    if ($mets_conts === FALSE) {
+		++$loop_cnt;
+		$loop = TRUE;
+		sleep(30);
+	    } else {
+		$loop = FALSE;
+	    }
+	    if ($loop === TRUE && $loop_cnt > 3) {
+		// no response
+		fwrite(STDERR, $base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id . PHP_EOL);
+		fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+		fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+		fwrite(STDERR, 'Resume harvesting using this token: ' . $cur_token . PHP_EOL);
+		break 2;
+	    }
+	} while ($loop);
+	unset($loop, $loop_cnt);
 
         if ($store_xml !== FALSE) {
             // write mets to local filesystem
@@ -452,16 +464,28 @@ do {
     // setup new xml
     if ($token->length == 0) break; // no token anymore, leave loop
 
-    $conts = @file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
-    if ($conts === FALSE) {
-        // no response
-        fwrite(STDERR, $base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent . PHP_EOL);
-        fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
-        fwrite(STDERR, $http_response_header[0] . PHP_EOL);
-	fwrite(STDERR, 'Resume harvesting with this token: ' . $token->item(0)->textContent . PHP_EOL);
-        break;
-    }
-
+    $loop = FALSE;
+    $loop_cnt = 0;
+    do {
+	$conts = @file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
+	
+	if ($conts === FALSE) {
+	    ++$loop_cnt;
+	    $loop = TRUE;
+	    sleep(30);
+	} else {
+	    $loop = FALSE;
+	}
+	if ($loop === TRUE && $loop_cnt > 3) {
+	    // no response
+	    fwrite(STDERR, $base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent . PHP_EOL);
+	    fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+	    fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+	    fwrite(STDERR, 'Resume harvesting with this token: ' . $token->item(0)->textContent . PHP_EOL);
+	    break;
+	}
+    } while ($loop);
+    unset($loop, $loop_cnt);
     sleep(1);
 
     $xml = new DOMDocument();
@@ -472,7 +496,7 @@ do {
 
     $counter++;
 
-} while(true);
+} while (true);
 
 fwrite($file_ptr, '}');
 fclose($file_ptr);
