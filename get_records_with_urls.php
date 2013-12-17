@@ -3,7 +3,7 @@
  * Author: Tobias Schweizer, Digital Humanities Lab, University of Basel
  * Contact: t.schweizer@unibas.ch
  *
- * Version: 0.9
+ * Version: 1.0
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,10 +24,11 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 function print_usage($out) {
-    fwrite($out, 'Usage: get_records_with_urls.php -rep e-rara|e-manuscripta|heidelberg [-date yyyy-mm-ddThh:mm:ssZ] [-set set] [--list-sets] [-xml directory] [-v]' . PHP_EOL . PHP_EOL);
+    fwrite($out, 'Usage: get_records_with_urls.php -rep e-rara|e-manuscripta|heidelberg [-resume resumptionToken] [-date yyyy-mm-ddThh:mm:ssZ] [-set set] [-sets] [-xml directory] [-v]' . PHP_EOL . PHP_EOL);
+    fwrite($out, " -resume\tResume an earlier harvesting process by specifiying a resumption token" . PHP_EOL);
     fwrite($out, " -date\t\tLimit requests by specifying a datestamp in MEZ - 1h: records created or modified >= specified datestamp" . PHP_EOL);
     fwrite($out, " -set\t\tLimit requests by specifying a set" . PHP_EOL);
-    fwrite($out, " --list-sets\tTo get a list of the existing sets for a specific provider (no records are being downloaded using this option)" . PHP_EOL);
+    fwrite($out, " -sets\t\tTo get a list of the existing sets for a specific provider (no records are being downloaded using this option)" . PHP_EOL);
     fwrite($out, " -xml\t\tSpecifiy a directory to save the xml record-description files (mets) locally" . PHP_EOL);
     fwrite($out, " -v \t\tTo get a list of the imported records to stdout (verbose) " . PHP_EOL . PHP_EOL);
 
@@ -46,6 +47,7 @@ $datestr = '';
 $listsets = FALSE;
 $verbose = FALSE;
 $store_xml = FALSE;
+$resume = FALSE;
 
 for ($i = 1; $i < $argc; $i++) {
     if ($argv[$i] == '-rep') {
@@ -72,6 +74,17 @@ for ($i = 1; $i < $argc; $i++) {
             print_usage(STDERR);
             exit(1);
         }
+    }
+    if ($argv[$i] == '-resume') {
+	$i++;
+	    
+	if (!isset($argv[$i])) {
+	    print_usage(STDERR);
+	    exit(1);
+	}
+
+	$resume = $argv[$i];
+	
     }
     if ($argv[$i] == '-date') {
         $i++;
@@ -136,7 +149,7 @@ for ($i = 1; $i < $argc; $i++) {
 
         $set = '&set=' . $argv[$i];
     }
-    if ($argv[$i] == '--list-sets') {
+    if ($argv[$i] == '-sets') {
 
         $listsets = TRUE;
     }
@@ -217,10 +230,26 @@ if ($listsets) {
         $sets = $xml->getElementsByTagName('set');
 
     } while(true);
+    unset($token);
     exit(0);
 }
 
-$conts = file_get_contents($base_url. $oai_frag . '?verb=ListRecords&metadataPrefix=oai_dc' . $datestr . $set);
+if ($resume === FALSE) {
+    // new harvesting process
+    $conts = @file_get_contents($base_url. $oai_frag . '?verb=ListRecords&metadataPrefix=oai_dc' . $datestr . $set);
+    $cur_token = 'initial'; // no token yet, it is the first request
+} else {
+    // resume an aborted harvesting process
+    $conts = @file_get_contents($base_url. $oai_frag . '?verb=ListRecords&resumptionToken=' . $resume);
+    $cur_token = $resume; // store token of current request
+}
+
+if ($conts === FALSE) {
+    // no response
+    fwrite(STDERR, 'Initial Get request failed' . PHP_EOL);
+    fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+    exit(1);
+}
 
 $xml = new DOMDocument();
 $xml->loadXML($conts);
@@ -250,9 +279,10 @@ echo 'Starting Harvesting ' .PHP_EOL;
 echo $date . PHP_EOL . PHP_EOL;
 
 $counter = 1;
+$overall_rec_counter = 1;
 
 do {
-
+    
     $rec_counter = 1;
 
     $records = $xml->getElementsByTagName('record');
@@ -322,6 +352,7 @@ do {
             fwrite(STDERR, $base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id . PHP_EOL);
             fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
             fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+	    fwrite(STDERR, 'Resume harvesting using this token: ' . $cur_token . PHP_EOL);
             break 2;
         }
 
@@ -402,10 +433,9 @@ do {
         if (count($record_array['urls']['max']) == 0 || count($record_array['urls']['thumb']) == 0) fwrite(STDERR, 'No images given for ' . $id . PHP_EOL);
         if (count($record_array['urls']['max']) != count($record_array['urls']['thumb'])) fwrite(STDERR, 'Number of max images not equals number of thumbs for ' . $id . PHP_EOL);
 
-        echo 'Request num: ' . $counter .  ', record: ' . $rec_counter++ . PHP_EOL;
+        echo $cur_token . ', Request num: ' . $counter .  ', record: ' . $rec_counter++ . ' (' . $overall_rec_counter++ . '), id= '. $id . PHP_EOL;
 
         if ($verbose) {
-            echo $id . PHP_EOL;
             print_r($record_array);
             echo '---------------------------' . PHP_EOL;
             echo '---------------------------' . PHP_EOL;
@@ -428,6 +458,7 @@ do {
         fwrite(STDERR, $base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent . PHP_EOL);
         fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
         fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+	fwrite(STDERR, 'Resume harvesting with this token: ' . $token->item(0)->textContent . PHP_EOL);
         break;
     }
 
@@ -436,6 +467,7 @@ do {
     $xml = new DOMDocument();
     $xml->loadXML($conts);
 
+    $cur_token = $token->item(0)->textContent; // $token is the identifier for the request which will be processed in the coming loop
     $token = $xml->getElementsByTagName('resumptionToken');
 
     $counter++;
