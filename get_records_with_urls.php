@@ -76,15 +76,15 @@ for ($i = 1; $i < $argc; $i++) {
         }
     }
     if ($argv[$i] == '-resume') {
-	$i++;
-	    
-	if (!isset($argv[$i])) {
-	    print_usage(STDERR);
-	    exit(1);
-	}
+        $i++;
 
-	$resume = $argv[$i];
-	
+        if (!isset($argv[$i])) {
+            print_usage(STDERR);
+            exit(1);
+        }
+
+        $resume = $argv[$i];
+
     }
     if ($argv[$i] == '-date') {
         $i++;
@@ -282,7 +282,7 @@ $counter = 1;
 $overall_rec_counter = 1;
 
 do {
-    
+
     $rec_counter = 1;
 
     $records = $xml->getElementsByTagName('record');
@@ -346,27 +346,27 @@ do {
 
 
         // get file ids by using the mets metadata prefix
-	$loop = FALSE;
-	$loop_cnt = 0;
-	do {
-	    $mets_conts = @file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
-	    if ($mets_conts === FALSE) {
-		++$loop_cnt;
-		$loop = TRUE;
-		sleep(30);
-	    } else {
-		$loop = FALSE;
-	    }
-	    if ($loop === TRUE && $loop_cnt > 3) {
-		// no response
-		fwrite(STDERR, $base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id . PHP_EOL);
-		fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
-		fwrite(STDERR, $http_response_header[0] . PHP_EOL);
-		fwrite(STDERR, 'Resume harvesting using this token: ' . $cur_token . PHP_EOL);
-		break 2;
-	    }
-	} while ($loop);
-	unset($loop, $loop_cnt);
+        $loop = FALSE;
+        $loop_cnt = 0;
+        do {
+            $mets_conts = @file_get_contents($base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id);
+            if ($mets_conts === FALSE) {
+                ++$loop_cnt;
+                $loop = TRUE;
+                sleep(30);
+            } else {
+                $loop = FALSE;
+            }
+            if ($loop === TRUE && $loop_cnt > 3) {
+                // no response
+                fwrite(STDERR, $base_url . $oai_frag . '?verb=GetRecord&metadataPrefix=mets&identifier=' . $id . PHP_EOL);
+                fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+                fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+                fwrite(STDERR, 'Resume harvesting using this token: ' . $cur_token . PHP_EOL);
+                break 2;
+            }
+        } while ($loop);
+        unset($loop, $loop_cnt);
 
         if ($store_xml !== FALSE) {
             // write mets to local filesystem
@@ -391,27 +391,30 @@ do {
             $record_array['urls']['max'] = array();
             $record_array['urls']['thumb'] = array();
 
-            foreach ($fileSec->item(0)->childNodes as $fileGrp) {
-                if ($fileGrp->nodeType == 3) continue; // text node
+            if ($fileSec->length > 0) {
+		// $fileSec is not empty (image paths are given)
+                foreach ($fileSec->item(0)->childNodes as $fileGrp) {
+                    if ($fileGrp->nodeType == 3) continue; // text node
 
-                if ($fileGrp->getAttribute('USE') == 'MAX') {
+                    if ($fileGrp->getAttribute('USE') == 'MAX') {
 
 
-                    foreach($fileGrp->childNodes as $file) {
-                        if ($file->nodeType == 3) continue; // text node
+                        foreach($fileGrp->childNodes as $file) {
+                            if ($file->nodeType == 3) continue; // text node
 
-                        $img_id = $file->getAttribute('ID');
-                        $pos = strrpos($img_id, '_');
+                            $img_id = $file->getAttribute('ID');
+                            $pos = strrpos($img_id, '_');
 
-                        $img_id = substr($file->getAttribute('ID'), ($pos+1));
-                        $record_array['urls']['max'][] = $base_url . '/image/view/' . $img_id;
-                        $record_array['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
+                            $img_id = substr($file->getAttribute('ID'), ($pos+1));
+                            $record_array['urls']['max'][] = $base_url . '/image/view/' . $img_id;
+                            $record_array['urls']['thumb'][] = $base_url . '/image/thumb/' . $img_id;
 
+                        }
+
+                        break;
                     }
 
-                    break;
                 }
-
             }
 
         } elseif ($provider == 'heidelberg') {
@@ -467,23 +470,23 @@ do {
     $loop = FALSE;
     $loop_cnt = 0;
     do {
-	$conts = @file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
-	
-	if ($conts === FALSE) {
-	    ++$loop_cnt;
-	    $loop = TRUE;
-	    sleep(30);
-	} else {
-	    $loop = FALSE;
-	}
-	if ($loop === TRUE && $loop_cnt > 3) {
-	    // no response
-	    fwrite(STDERR, $base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent . PHP_EOL);
-	    fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
-	    fwrite(STDERR, $http_response_header[0] . PHP_EOL);
-	    fwrite(STDERR, 'Resume harvesting with this token: ' . $token->item(0)->textContent . PHP_EOL);
-	    break;
-	}
+        $conts = @file_get_contents($base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent);
+
+        if ($conts === FALSE) {
+            ++$loop_cnt;
+            $loop = TRUE;
+            sleep(30);
+        } else {
+            $loop = FALSE;
+        }
+        if ($loop === TRUE && $loop_cnt > 3) {
+            // no response
+            fwrite(STDERR, $base_url . $oai_frag . '?verb=ListRecords&resumptionToken=' . $token->item(0)->textContent . PHP_EOL);
+            fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
+            fwrite(STDERR, $http_response_header[0] . PHP_EOL);
+            fwrite(STDERR, 'Resume harvesting with this token: ' . $token->item(0)->textContent . PHP_EOL);
+            break;
+        }
     } while ($loop);
     unset($loop, $loop_cnt);
     sleep(1);
