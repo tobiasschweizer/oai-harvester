@@ -36,6 +36,10 @@ function print_usage($out) {
     fwrite($out, 'Providers: www.e-rara.ch (e-rara), www.e-manuscripta.ch (e-manuscripta) and digi.ub.uni-heidelberg.de (heidelberg)' . PHP_EOL);
 }
 
+
+
+chdir(dirname(__FILE__));
+
 if ($argc < 2) {
     print_usage(STDERR);
     exit(1);
