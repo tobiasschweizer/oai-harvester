@@ -367,7 +367,8 @@ do {
                 fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
                 fwrite(STDERR, $http_response_header[0] . PHP_EOL);
                 fwrite(STDERR, 'Resume harvesting using this token: ' . $cur_token . PHP_EOL);
-                break 2;
+                exit(1);
+		//break 2;
             }
         } while ($loop);
         unset($loop, $loop_cnt);
@@ -489,7 +490,8 @@ do {
             fwrite(STDERR, 'Could not be retrieved' . PHP_EOL);
             fwrite(STDERR, $http_response_header[0] . PHP_EOL);
             fwrite(STDERR, 'Resume harvesting with this token: ' . $token->item(0)->textContent . PHP_EOL);
-            break;
+            exit(1);
+	    //break;
         }
     } while ($loop);
     unset($loop, $loop_cnt);
