@@ -18,3 +18,5 @@ The following call of date provides a datestamp 24h and 1m ago (and reduced by o
 You can also determine the date of the last harvest by reading its datestamp. For doing that, you can use jshon (available at https://github.com/keenerd/jshon)
 
     jshon -e datestamp < harvest.json | sed "s/^\([\"']\)\(.*\)\1\$/\2/g"
+    
+To automate syncing, you can use the script harvest.sh (jshon is required).
