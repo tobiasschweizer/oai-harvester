@@ -262,6 +262,12 @@ $xml->loadXML($conts);
 $error = $xml->getElementsByTagName('error');
 if ($error->length > 0) {
     // an error occurred
+    
+    if ($error->item(0)->getAttribute('code') == "noRecordsMatch") {
+	// no new records
+	echo $error->item(0)->textContent . PHP_EOL;
+	exit(2);
+    }
     fwrite(STDERR, $error->item(0)->textContent . PHP_EOL);
     exit(1);
 }
